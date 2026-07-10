@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: store_margin
+    description: "Store-level financial performance tracking revenue against underlying supply costs."
+    columns:
+      - name: store_id
+        description: "Primary key for the store."
+        tests:
+          - unique
+          - not_null
+      - name: profit_margin_percentage
+        description: "Business logic guardrail: Alert if profit margin falls into impossible negative values due to supply cost spikes."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= -50"
