@@ -1,0 +1,126 @@
+sources:
+  - name: jaffle_shop
+    database: ivory-forklift-502008-i7 
+    schema: uob_dbt_output_raw   
+    tables:      
+      - name: raw_customers
+        description: ""
+        columns:
+          - name: id
+            data_type: string
+            description: ""
+          - name: name
+            data_type: string
+            description: ""
+
+      - name: raw_items
+        description: ""
+        columns:
+          - name: id
+            data_type: string
+            description: ""
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            data_type: string
+            description: ""
+            
+          - name: sku
+            data_type: string
+            description: ""
+
+      - name: raw_orders
+        description: ""
+        columns:
+          - name: id
+            data_type: string
+            description: ""
+            tests:
+              - unique
+              - not_null
+          - name: customer
+            data_type: string
+            description: ""
+          - name: ordered_at
+            data_type: datetime
+            description: ""
+          - name: store_id
+            data_type: string
+            description: ""
+          - name: subtotal
+            data_type: int64
+            description: ""
+          - name: tax_paid
+            data_type: int64
+            description: ""
+          - name: order_total
+            data_type: int64
+            description: ""
+
+      - name: raw_products
+        description: ""
+        columns:
+          - name: sku
+            data_type: string
+            description: ""
+            tests:
+              - unique
+              - not_null
+          - name: name
+            data_type: string
+            description: ""
+          - name: type
+            data_type: string
+            description: ""
+          - name: price
+            data_type: int64
+            description: ""
+          - name: description
+            data_type: string
+            description: ""
+
+      - name: raw_stores
+        description: ""
+        columns:
+          - name: id
+            data_type: string
+            description: ""
+            tests:
+              - unique
+              - not_null
+          - name: name
+            data_type: string
+            description: ""
+          - name: opened_at
+            data_type: datetime
+            description: ""
+          - name: tax_rate
+            data_type: float64
+            description: ""
+
+      - name: raw_supplies
+        description: ""
+        columns:
+          - name: id
+            data_type: string
+            description: ""
+            tests:
+              - unique
+              - not_null
+          - name: name
+            data_type: string
+            description: ""
+            
+          - name: cost
+            data_type: int64
+            description: ""
+            
+          - name: perishable
+            data_type: boolean
+            description: ""
+            
+          - name: sku
+            data_type: string
+            description: ""
+            
