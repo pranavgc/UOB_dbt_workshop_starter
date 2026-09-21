@@ -1,0 +1,132 @@
+version: 2
+
+models:
+  - name: dim_store
+    description: "Store dimension. opened_at comes from the source openings feed, not the seeded catalogue."
+    columns:
+      - name: store_id
+        description: "Primary key."
+        tests: [unique, not_null]
+      - name: tax_rate
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 0.2
+      - name: opened_at
+        tests: [not_null]
+
+  - name: dim_product
+    description: "Product dimension with the bill-of-materials unit cost attached."
+    columns:
+      - name: sku
+        tests: [unique, not_null]
+      - name: unit_cost
+        description: "Sum of supply costs per unit. See int_product_unit_cost for the assumption."
+        tests: [not_null]
+      - name: catalogue_margin_pct
+        description: "Guardrail: catalogue margin should never be negative at list price."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+
+  - name: fct_store_day_sku
+    description: >
+      Store x sku x day sales fact. Replaces the original store_margin model:
+      revenue is the transacted price rather than the catalogue price, the grain
+      supports time-series analysis, and zero-sales days are retained rather than
+      silently dropped by the aggregation.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, order_date]
+    columns:
+      - name: store_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_store')
+                field: store_id
+      - name: sku
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: sku
+      - name: units_sold
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: gross_revenue
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: margin_pct
+        description: "Business-logic guardrail carried over from the workshop project."
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= -50 or margin_pct is null"
+
+  - name: mart_ml_features
+    description: >
+      The modelling surface consumed by ml/. One row per store x sku x day, with
+      units_sold as the target and every rolling feature computed from strictly
+      earlier rows. The simulator's latent demand rate is deliberately absent:
+      models must recover the data-generating process from observables alone.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, order_date]
+    columns:
+      - name: units_sold
+        description: "Target. Negative Binomial counts, so the variance exceeds the mean."
+        tests: [not_null]
+      - name: log_price_rel
+        description: "log(transacted list price / catalogue base price). The elasticity regressor."
+        tests: [not_null]
+      - name: is_featured
+        description: >
+          Featured menu-board placement. NOT randomly assigned -- scheduled when
+          trailing store x product-type demand is weak, so it is correlated with
+          the error term. Condition on the trailing features to de-confound it.
+        tests: [not_null]
+      - name: ramp
+        description: "min(days since store opened / 90, 1). Saturating store ramp-up."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: temperature_is_imputed
+        description: >
+          True where the weather reading was missing and filled from climatology.
+          Carried through so the effect of MAR missingness on the temperature
+          coefficient can be measured -- see ml/run.py::imputation_sensitivity.
+        tests: [not_null]
+      - name: temp_dev_sq
+        description: "((temperature_c - 20) / 10)^2 -- carries the U-shaped weather response."
+        tests: [not_null]
+      - name: trailing_7d_units
+        description: "Mean units over the previous 7 days, EXCLUDING today. Null on a store x sku's first day."
+      - name: type_trailing_7d_units
+        description: >
+          Mean units for this store and product type over the previous 7 days.
+          This is the level the featuring rule actually reads, so it is the
+          control that de-confounds the featuring coefficient.
+      - name: day_of_week
+        description: "0 = Monday .. 6 = Sunday, via the day_of_week_monday_zero macro."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 6

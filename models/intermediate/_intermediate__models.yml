@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: int_product_unit_cost
+    description: "Bill of materials rolled to a unit cost per sku. Assumption documented in the model."
+    columns:
+      - name: sku
+        tests: [unique, not_null]
+      - name: unit_cost
+        tests: [not_null]
+
+  - name: int_orders_repaired
+    description: >
+      Sales orders with the three known source defects repaired: duplicate rows
+      deduplicated, one store-month's cents/dollars unit slip rescaled, refunds
+      routed out. Every repair is narrow, documented in the model, and guarded by
+      a test. This is the model downstream joins should use -- never the raw
+      orders, which fan out on the duplicates.
+    columns:
+      - name: order_id
+        description: "Genuinely unique here, unlike at source."
+        tests: [unique, not_null]
+      - name: order_subtotal_cents
+        description: "Refunds are gone, so this is strictly positive."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: load_lag_days
+        description: "Days between the order and its arrival in the warehouse."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 10
+
+  - name: int_weather_imputed
+    description: >
+      Weather with gaps filled from each store's own monthly climatology, and a
+      flag marking every filled row. The missingness is MAR, not MCAR, so the flag
+      is carried to the feature mart and the resulting bias is measured rather
+      than assumed.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, weather_date]
+    columns:
+      - name: temperature_c
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -30
+                max_value: 50
+      - name: temperature_is_imputed
+        tests: [not_null]
+
+  - name: int_order_lines_enriched
+    description: >
+      One row per unit sold, priced from the daily snapshot for that store, sku and
+      date rather than from the catalogue. This is the fix for the original
+      store_margin model, which valued lines at catalogue price and so could never
+      reconcile to source.
+    columns:
+      - name: order_item_id
+        tests: [unique, not_null]
+      - name: line_revenue
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: int_demand_spine
+    description: "Dense store x sku x day universe, clipped to days on or after the store opened."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, order_date]
+
+  - name: int_store_day_sku_demand
+    description: "Store x sku x day demand, including zero-sales days."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, order_date]
+
+  - name: int_store_day_type_demand
+    description: >
+      Store x product type x day. Exists because featured placements are scheduled
+      off trailing demand at this level -- it is where the confounder lives.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, product_type, order_date]

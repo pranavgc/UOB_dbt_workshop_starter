@@ -1,0 +1,18 @@
+# Pinned to majors; the project is run, not published.
+dbt-core~=1.12
+dbt-duckdb~=1.11
+duckdb~=1.1
+pandas~=2.2
+numpy~=2.0
+pyarrow~=17.0
+PyYAML~=6.0
+scipy~=1.14
+statsmodels~=0.14
+scikit-learn~=1.5
+lightgbm~=4.5
+matplotlib~=3.9
+tabulate~=0.9
+pytest~=8.3
+
+# BigQuery target only -- not needed for the local DuckDB path or for CI.
+# dbt-bigquery~=1.9

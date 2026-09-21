@@ -1,0 +1,105 @@
+{
+  "_comment": "True parameters of the data-generating process. Models are scored on recovering these, not only on held-out error. Never joined into the feature mart -- see README.",
+  "seed": 20260914,
+  "window": {
+    "start": "2023-01-01",
+    "end": "2025-12-31",
+    "days": 1096
+  },
+  "scale": {
+    "orders": 686555,
+    "order_lines": 983994,
+    "stores": 6,
+    "skus": 10,
+    "customers": 4200
+  },
+  "coefficients": {
+    "alpha_store": {
+      "Philadelphia": 2.55,
+      "Brooklyn": 2.42,
+      "Chicago": 2.28,
+      "San Francisco": 2.66,
+      "New Orleans": 2.18,
+      "Los Angeles": 2.5
+    },
+    "beta_price_jaffle": -1.8,
+    "beta_price_beverage": -0.9,
+    "gamma_featured": 0.35,
+    "sku_popularity": {
+      "BEV-001": 0.6735,
+      "BEV-002": 0.6991,
+      "BEV-003": 0.7117,
+      "BEV-004": 0.7605,
+      "BEV-005": 0.7425,
+      "JAF-001": -0.7526,
+      "JAF-002": -0.7526,
+      "JAF-003": -0.6023,
+      "JAF-004": -0.6999,
+      "JAF-005": -0.78
+    },
+    "temp_opt_c": 20.0,
+    "temp_curvature": -0.16,
+    "beverage_temp": 0.2,
+    "dow": {
+      "Mon": -0.11,
+      "Tue": -0.09,
+      "Wed": -0.03,
+      "Thu": 0.06,
+      "Fri": 0.29,
+      "Sat": 0.36,
+      "Sun": -0.48
+    },
+    "fourier": {
+      "a1": 0.14,
+      "b1": -0.09,
+      "a2": 0.05,
+      "b2": 0.03
+    },
+    "ramp": 0.45,
+    "nb_dispersion": 6.0,
+    "latent_shock_rho": 0.9,
+    "latent_shock_sigma": 0.07
+  },
+  "injected_defects": [
+    {
+      "defect": "duplicate_orders",
+      "rows": 2722,
+      "rate": 0.004,
+      "detail": "exact duplicate order rows; line items not duplicated"
+    },
+    {
+      "defect": "refunds",
+      "rows": 3416,
+      "rate": 0.005,
+      "detail": "negative subtotal/tax/total, no line items, id prefixed 'rf-'"
+    },
+    {
+      "defect": "unit_slip",
+      "rows": 4194,
+      "store": "San Francisco",
+      "month": "2023-03",
+      "detail": "order header values multiplied by 100; line items untouched"
+    },
+    {
+      "defect": "missing_weather",
+      "rows": 275,
+      "share_of_rows": 0.0418,
+      "share_missing_among_extreme_days": 0.1613,
+      "share_missing_among_normal_days": 0.0231,
+      "detail": "MAR: missingness depends on the value itself, so mean imputation biases"
+    },
+    {
+      "defect": "late_arrivals",
+      "rows": 20468,
+      "rate": 0.03,
+      "max_lag_days": 4,
+      "detail": "loaded_at lags ordered_at by 1 day normally, more for late rows"
+    }
+  ],
+  "identification_notes": {
+    "beta_price": "Identified off three independent price sources: chain inflation, a drifting per-store regional multiplier, and discrete per-sku repricing events. Elasticity differs by product type, so a pooled coefficient is misspecified and should land between the two true values.",
+    "gamma_featured": "CONFOUNDED BY DESIGN. A persistent AR(1) demand shock (rho = 0.90) sits in the error term and is never emitted. Featuring is scheduled when trailing demand is weak, and because the shock persists, a weak last week implies a weak today -- so featuring is correlated with the CURRENT error and naive OLS understates the lift. Conditioning on the lagged trailing-demand features in mart_ml_features proxies for the shock and recovers it. Note that without persistence there would be no bias at all.",
+    "temp_curvature": "The temperature response is quadratic. A linear term cannot represent it, so splines and gradient boosting should beat OLS on this feature for a reason that is knowable in advance.",
+    "nb_dispersion": "Counts are Negative Binomial, so the variance exceeds the mean. A Poisson GLM is the wrong family and the dispersion statistic should say so."
+  }
+}
