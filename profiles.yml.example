@@ -1,0 +1,32 @@
+# Copy to ~/.dbt/profiles.yml (or keep here and run with --profiles-dir .).
+#
+# `dev` needs no cloud account at all: it runs the whole project against the
+# DuckDB file that sim/generate.py writes. That is what CI uses, and it is what
+# makes this repo runnable by anyone who clones it.
+
+jaffle_demand_lab:
+  target: dev
+
+  outputs:
+    # ---- local, zero-credential path -------------------------------------
+    dev:
+      type: duckdb
+      path: data/jaffle.duckdb
+      schema: main
+      threads: 4
+
+    # ---- BigQuery -------------------------------------------------------
+    # Load the generated parquet first:
+    #     python -m sim.load_bigquery --project $DBT_GCP_PROJECT --dataset jaffle_sim_raw
+    # then:
+    #     dbt build --target bigquery \
+    #       --vars '{raw_database: your-gcp-project, raw_schema: jaffle_sim_raw}'
+    bigquery:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('DBT_GCP_PROJECT') }}"
+      dataset: "{{ env_var('DBT_GCP_DATASET', 'jaffle_demand_lab') }}"
+      keyfile: "{{ env_var('DBT_GCP_KEYFILE') }}"
+      location: "{{ env_var('DBT_GCP_LOCATION', 'US') }}"
+      threads: 8
+      priority: interactive

@@ -1,0 +1,149 @@
+version: 2
+
+models:
+  - name: stg_jaffle_shop__orders
+    description: >
+      Order header, renamed and cast. A pure rename/cast model: it inherits the
+      source's duplicate rows, refunds and unit slip untouched, because repairs
+      belong in the intermediate layer where they can be explained. See
+      int_orders_repaired.
+    columns:
+      - name: order_id
+        description: >
+          Not unique here, by design -- this model does not deduplicate. The test
+          is kept at warn severity so the duplicate rate stays visible in every
+          build; the error-severity uniqueness test lives on int_orders_repaired.
+        tests:
+          - unique:
+              config:
+                severity: warn
+          - not_null
+      - name: order_subtotal_cents
+        description: "Kept in cents so the reconciliation test can compare without float noise."
+        tests: [not_null]
+
+  - name: stg_jaffle_shop__items
+    description: "One row per unit sold. The source has no quantity column."
+    columns:
+      - name: order_item_id
+        tests: [unique, not_null]
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_jaffle_shop__orders')
+                field: order_id
+
+  - name: stg_jaffle_shop__tax_rate_changes
+    description: "Tax rate history with next_effective_date, for as-of joins."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, effective_date]
+    columns:
+      - name: tax_rate
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 0.2
+
+  - name: stg_jaffle_shop__refunds
+    description: >
+      Refunds, routed out of the sales stream rather than deleted. They arrive in
+      the same source table as orders with negative values and no line items.
+    columns:
+      - name: refund_id
+        tests: [unique, not_null]
+      - name: refund_total
+        description: "Positive here; negative at source."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: stg_jaffle_shop__customers
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+
+  - name: stg_jaffle_shop__products
+    columns:
+      - name: sku
+        tests: [unique, not_null]
+      - name: product_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['jaffle', 'beverage']
+
+  - name: stg_jaffle_shop__stores
+    columns:
+      - name: store_id
+        tests: [unique, not_null]
+
+  - name: stg_jaffle_shop__store_openings
+    description: "Opening dates from the source feed, not the seeded catalogue. See _sources.yml."
+    columns:
+      - name: store_id
+        tests: [unique, not_null]
+
+  - name: stg_jaffle_shop__supplies
+    description: >
+      Bill of materials. NOTE ON GRAIN: supply_id is not a primary key. The seed
+      has 65 rows and only 29 distinct supply_ids, because a shared input (a
+      napkin, a serving boat) appears once per sku that consumes it. The real
+      grain is supply_id x sku. The workshop starter declared `unique` on this
+      column at the source, which cannot have passed.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [supply_id, sku]
+    columns:
+      - name: supply_id
+        tests: [not_null]
+      - name: sku
+        tests: [not_null]
+      - name: supply_cost
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: stg_jaffle_shop__weather
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, weather_date]
+    columns:
+      - name: temperature_c
+        description: "Daily mean temperature, degrees C. Range test guards against a unit slip."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -30
+                max_value: 50
+
+  - name: stg_jaffle_shop__price_snapshots
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, price_date]
+    columns:
+      - name: list_price
+        description: "Transacted list price in dollars. The range test is the cents/dollars unit guard."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0.5
+                max_value: 50
+
+  - name: stg_jaffle_shop__featured_placements
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [store_id, sku, placement_date]

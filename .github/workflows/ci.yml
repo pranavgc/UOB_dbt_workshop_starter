@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint
+        run: ruff check sim ml
+
+      - name: Simulator tests
+        run: python -m pytest sim/tests -q
+
+      # A short window keeps CI fast. The pipeline's correctness does not depend
+      # on the length of the series, and every data test below still runs.
+      - name: Generate source feed
+        run: python -m sim.generate --years 0.6
+
+      # Runs against DuckDB, so CI needs no cloud credentials. That is also what
+      # makes the repo runnable by anyone who clones it.
+      - name: dbt build
+        run: |
+          cp profiles.yml.example profiles.yml
+          dbt deps
+          dbt build --profiles-dir . --target dev
+
+      - name: Upload dbt artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-target
+          path: target/
+          retention-days: 7

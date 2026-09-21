@@ -1,0 +1,566 @@
+{
+  "rows": 52310,
+  "development_rows": 46910,
+  "holdout_rows": 5400,
+  "holdout_window": [
+    "2025-10-03",
+    "2025-12-31"
+  ],
+  "cv_summary": [
+    {
+      "model": "seasonal_naive",
+      "rmse": 14.5663,
+      "mae": 9.1916,
+      "smape": 52.1849,
+      "bias": -2.1926,
+      "rmse_vs_baseline_pct": 0.0,
+      "rmse_ci95": "[11.741, 17.072]"
+    },
+    {
+      "model": "store_sku_mean",
+      "rmse": 14.952,
+      "mae": 9.5065,
+      "smape": 52.9636,
+      "bias": -1.6942,
+      "rmse_vs_baseline_pct": 2.65,
+      "rmse_ci95": "[12.078, 17.607]"
+    },
+    {
+      "model": "ols_naive",
+      "rmse": 18.6165,
+      "mae": 14.2899,
+      "smape": 74.2146,
+      "bias": 1.2228,
+      "rmse_vs_baseline_pct": 27.81,
+      "rmse_ci95": "[14.536, 22.476]"
+    },
+    {
+      "model": "ols_structural",
+      "rmse": 12.1969,
+      "mae": 7.9473,
+      "smape": 44.8462,
+      "bias": 0.7445,
+      "rmse_vs_baseline_pct": -16.27,
+      "rmse_ci95": "[10.160, 14.059]"
+    },
+    {
+      "model": "ols_controlled",
+      "rmse": 11.9366,
+      "mae": 7.7674,
+      "smape": 44.2023,
+      "bias": 0.6424,
+      "rmse_vs_baseline_pct": -18.05,
+      "rmse_ci95": "[9.847, 13.837]"
+    },
+    {
+      "model": "glm_nb",
+      "rmse": 12.0707,
+      "mae": 7.7626,
+      "smape": 44.2757,
+      "bias": -0.0331,
+      "rmse_vs_baseline_pct": -17.13,
+      "rmse_ci95": "[9.926, 13.983]"
+    },
+    {
+      "model": "ols_spline",
+      "rmse": 12.1779,
+      "mae": 7.9312,
+      "smape": 44.8066,
+      "bias": 0.7003,
+      "rmse_vs_baseline_pct": -16.4,
+      "rmse_ci95": "[10.163, 14.026]"
+    },
+    {
+      "model": "enet",
+      "rmse": 11.876,
+      "mae": 7.7036,
+      "smape": 44.1963,
+      "bias": 0.3226,
+      "rmse_vs_baseline_pct": -18.47,
+      "rmse_ci95": "[9.714, 13.832]"
+    },
+    {
+      "model": "gbm",
+      "rmse": 12.0577,
+      "mae": 7.7065,
+      "smape": 44.1281,
+      "bias": -0.2451,
+      "rmse_vs_baseline_pct": -17.22,
+      "rmse_ci95": "[9.802, 14.128]"
+    }
+  ],
+  "final_holdout": [
+    {
+      "model": "seasonal_naive",
+      "rmse": 14.4272,
+      "mae": 9.5438,
+      "smape": 58.2541,
+      "bias": 6.159,
+      "rmse_vs_baseline_pct": 0.0
+    },
+    {
+      "model": "store_sku_mean",
+      "rmse": 13.7582,
+      "mae": 9.3074,
+      "smape": 58.6121,
+      "bias": 5.026,
+      "rmse_vs_baseline_pct": -4.64
+    },
+    {
+      "model": "ols_naive",
+      "rmse": 13.4274,
+      "mae": 10.1424,
+      "smape": 72.263,
+      "bias": 1.0372,
+      "rmse_vs_baseline_pct": -6.93
+    },
+    {
+      "model": "ols_structural",
+      "rmse": 9.1782,
+      "mae": 5.9377,
+      "smape": 45.8408,
+      "bias": 0.3084,
+      "rmse_vs_baseline_pct": -36.38
+    },
+    {
+      "model": "ols_controlled",
+      "rmse": 8.9676,
+      "mae": 5.8197,
+      "smape": 45.3903,
+      "bias": 0.4148,
+      "rmse_vs_baseline_pct": -37.84
+    },
+    {
+      "model": "glm_nb",
+      "rmse": 9.1108,
+      "mae": 5.8325,
+      "smape": 45.5627,
+      "bias": -0.2875,
+      "rmse_vs_baseline_pct": -36.85
+    },
+    {
+      "model": "ols_spline",
+      "rmse": 9.1928,
+      "mae": 5.9442,
+      "smape": 45.8435,
+      "bias": 0.3011,
+      "rmse_vs_baseline_pct": -36.28
+    },
+    {
+      "model": "enet",
+      "rmse": 8.9232,
+      "mae": 5.8187,
+      "smape": 45.4809,
+      "bias": 0.59,
+      "rmse_vs_baseline_pct": -38.15
+    },
+    {
+      "model": "gbm",
+      "rmse": 9.0612,
+      "mae": 5.7802,
+      "smape": 45.1574,
+      "bias": -0.1263,
+      "rmse_vs_baseline_pct": -37.19
+    }
+  ],
+  "coefficient_recovery": [
+    {
+      "parameter": "price elasticity (pooled)",
+      "model": "ols_naive",
+      "true": null,
+      "estimate": -1.211,
+      "ci95_low": -2.5681,
+      "ci95_high": 0.1461,
+      "recovery_error_pct": null,
+      "ci_covers_truth": "",
+      "note": "no true pooled value exists -- elasticity differs by type"
+    },
+    {
+      "parameter": "price elasticity, jaffle",
+      "model": "ols_structural",
+      "true": -1.8,
+      "estimate": -1.8665,
+      "ci95_low": -1.9917,
+      "ci95_high": -1.7412,
+      "recovery_error_pct": -3.7,
+      "ci_covers_truth": "yes",
+      "note": ""
+    },
+    {
+      "parameter": "price elasticity, beverage",
+      "model": "ols_structural",
+      "true": -0.9,
+      "estimate": -0.968,
+      "ci95_low": -1.0909,
+      "ci95_high": -0.8451,
+      "recovery_error_pct": -7.6,
+      "ci_covers_truth": "yes",
+      "note": ""
+    },
+    {
+      "parameter": "price elasticity, jaffle",
+      "model": "ols_controlled",
+      "true": -1.8,
+      "estimate": -1.796,
+      "ci95_low": -1.9013,
+      "ci95_high": -1.6906,
+      "recovery_error_pct": 0.2,
+      "ci_covers_truth": "yes",
+      "note": "controls cost nothing here; on 2 years they attenuated it ~12%"
+    },
+    {
+      "parameter": "price elasticity, beverage",
+      "model": "ols_controlled",
+      "true": -0.9,
+      "estimate": -0.9538,
+      "ci95_low": -1.0422,
+      "ci95_high": -0.8654,
+      "recovery_error_pct": -6.0,
+      "ci_covers_truth": "yes",
+      "note": "controls cost nothing here; on 2 years they attenuated it ~12%"
+    },
+    {
+      "parameter": "price elasticity, jaffle",
+      "model": "glm_nb",
+      "true": -1.8,
+      "estimate": -1.9231,
+      "ci95_low": -2.0455,
+      "ci95_high": -1.8006,
+      "recovery_error_pct": -6.8,
+      "ci_covers_truth": "NO",
+      "note": ""
+    },
+    {
+      "parameter": "price elasticity, beverage",
+      "model": "glm_nb",
+      "true": -0.9,
+      "estimate": -0.9708,
+      "ci95_low": -1.0975,
+      "ci95_high": -0.8441,
+      "recovery_error_pct": -7.9,
+      "ci_covers_truth": "yes",
+      "note": ""
+    },
+    {
+      "parameter": "featuring lift (gamma)",
+      "model": "ols_naive",
+      "true": 0.35,
+      "estimate": 0.3764,
+      "ci95_low": 0.3289,
+      "ci95_high": 0.424,
+      "recovery_error_pct": 7.6,
+      "ci_covers_truth": "yes",
+      "note": "unreliable: this spec is 28% WORSE than the baseline"
+    },
+    {
+      "parameter": "featuring lift (gamma)",
+      "model": "ols_structural",
+      "true": 0.35,
+      "estimate": 0.3318,
+      "ci95_low": 0.3117,
+      "ci95_high": 0.3518,
+      "recovery_error_pct": -5.2,
+      "ci_covers_truth": "yes",
+      "note": ""
+    },
+    {
+      "parameter": "featuring lift (gamma)",
+      "model": "ols_controlled",
+      "true": 0.35,
+      "estimate": 0.3426,
+      "ci95_low": 0.324,
+      "ci95_high": 0.3611,
+      "recovery_error_pct": -2.1,
+      "ci_covers_truth": "yes",
+      "note": "lagged demand proxies the shock; bias 5.2% -> 2.1%"
+    },
+    {
+      "parameter": "featuring lift (gamma)",
+      "model": "glm_nb",
+      "true": 0.35,
+      "estimate": 0.3229,
+      "ci95_low": 0.3059,
+      "ci95_high": 0.3398,
+      "recovery_error_pct": -7.8,
+      "ci_covers_truth": "NO",
+      "note": ""
+    },
+    {
+      "parameter": "store ramp-up",
+      "model": "ols_structural",
+      "true": 0.45,
+      "estimate": 0.2126,
+      "ci95_low": 0.1505,
+      "ci95_high": 0.2747,
+      "recovery_error_pct": -52.8,
+      "ci_covers_truth": "NO",
+      "note": ""
+    },
+    {
+      "parameter": "store ramp-up",
+      "model": "ols_controlled",
+      "true": 0.45,
+      "estimate": 0.1566,
+      "ci95_low": 0.1104,
+      "ci95_high": 0.2028,
+      "recovery_error_pct": -65.2,
+      "ci_covers_truth": "NO",
+      "note": "absorbed by the trailing-demand controls"
+    },
+    {
+      "parameter": "temperature curvature",
+      "model": "ols_structural",
+      "true": -0.16,
+      "estimate": -0.1627,
+      "ci95_low": -0.1713,
+      "ci95_high": -0.1541,
+      "recovery_error_pct": -1.7,
+      "ci_covers_truth": "yes",
+      "note": "survives MAR-missing weather only because of how it is imputed -- see imputation_sensitivity"
+    },
+    {
+      "parameter": "beverage temperature tilt",
+      "model": "ols_structural",
+      "true": 0.2,
+      "estimate": 0.2397,
+      "ci95_low": 0.2228,
+      "ci95_high": 0.2566,
+      "recovery_error_pct": 19.8,
+      "ci_covers_truth": "NO",
+      "note": ""
+    }
+  ],
+  "overdispersion": {
+    "poisson_pearson_chi2_per_df": 4.799,
+    "nb_alpha": 0.1948,
+    "verdict": "Poisson rejected: variance exceeds the mean"
+  },
+  "diagnostics": [
+    {
+      "assumption": "Heteroskedasticity",
+      "test": "Breusch-Pagan",
+      "statistic": "LM = 878, p = 1.4e-161",
+      "verdict": "VIOLATED",
+      "action": "Standard errors clustered by store x sku, which is robust to both heteroskedasticity and within-series correlation."
+    },
+    {
+      "assumption": "Serial correlation",
+      "test": "Durbin-Watson + residual ACF",
+      "statistic": "DW = 1.893, ACF(1) = 0.053, ACF(7) = -0.002",
+      "verdict": "VIOLATED",
+      "action": "Expected: a persistent latent demand shock sits in the error by construction. Handled by clustering, and by the lagged demand controls which absorb part of it. The residual dependence across skus within a store is what a mixed-effects model would address."
+    },
+    {
+      "assumption": "Normality of residuals",
+      "test": "Jarque-Bera",
+      "statistic": "JB = 3,912, skew = -0.63, kurtosis = 3.66",
+      "verdict": "VIOLATED",
+      "action": "Not acted on. Normality is not needed for OLS to be unbiased, and at n = 46,345 the CLT covers the inference. It would matter for prediction intervals, which is why those come from quantile methods instead."
+    },
+    {
+      "assumption": "Multicollinearity",
+      "test": "Variance inflation factor",
+      "statistic": "log_type_trailing_28d = 80.7; log_trailing_28d = 59.3; log_type_trailing_7d = 49.2",
+      "verdict": "VIOLATED",
+      "action": "The trailing-7-day and trailing-28-day demand features are correlated by construction -- one is a longer window over the same series. They are kept because dropping either weakens the de-confounding, and the cost is unstable individual coefficients, which stability_selection() quantifies."
+    },
+    {
+      "assumption": "Influential observations",
+      "test": "Cook's distance > 4/n",
+      "statistic": "4.85% of rows",
+      "verdict": "ok",
+      "action": "None needed."
+    }
+  ],
+  "shrinkage_path": [
+    {
+      "alpha": 0.0001,
+      "elasticity_jaffle": -1.7771,
+      "n_features_kept": 35
+    },
+    {
+      "alpha": 0.001,
+      "elasticity_jaffle": -1.6316,
+      "n_features_kept": 31
+    },
+    {
+      "alpha": 0.005,
+      "elasticity_jaffle": -1.1297,
+      "n_features_kept": 29
+    },
+    {
+      "alpha": 0.02,
+      "elasticity_jaffle": -0.2736,
+      "n_features_kept": 15
+    },
+    {
+      "alpha": 0.05,
+      "elasticity_jaffle": -0.0,
+      "n_features_kept": 9
+    },
+    {
+      "alpha": 0.1,
+      "elasticity_jaffle": -0.0,
+      "n_features_kept": 7
+    }
+  ],
+  "stability_selection": [
+    {
+      "feature": "log_price_rel",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "is_featured",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "temp_dev_sq",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "dow_4",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "fourier_sin1",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "log_type_trailing_7d",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "log_trailing_28d",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "log_type_trailing_28d",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "dow_5",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "dow_6",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "dow_3",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "sku_JAF-005",
+      "selection_frequency": 1.0,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "log_price_rel_bev",
+      "selection_frequency": 0.967,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "store_New Orleans",
+      "selection_frequency": 0.967,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "sku_BEV-002",
+      "selection_frequency": 0.95,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "sku_JAF-001",
+      "selection_frequency": 0.933,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "sku_BEV-004",
+      "selection_frequency": 0.917,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "fourier_cos2",
+      "selection_frequency": 0.917,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "sku_JAF-002",
+      "selection_frequency": 0.883,
+      "sign_consistency": 1.0
+    },
+    {
+      "feature": "dow_1",
+      "selection_frequency": 0.867,
+      "sign_consistency": 1.0
+    }
+  ],
+  "imputation_sensitivity": {
+    "true_curvature": -0.16,
+    "imputed_share": 0.0411,
+    "estimates": {
+      "climatology_imputation": -0.1627,
+      "global_mean_imputation": -0.1399,
+      "observed_rows_only": -0.1598
+    },
+    "errors_pct": {
+      "climatology_imputation": -1.7,
+      "global_mean_imputation": 12.6,
+      "observed_rows_only": 0.1
+    }
+  },
+  "leakage_experiment": {
+    "rolling_origin_last_fold": 12.6255,
+    "rolling_origin_all_folds": 12.0577,
+    "random_kfold": 11.8571,
+    "optimism_pct": 6.09,
+    "optimism_pct_unmatched": 1.66
+  },
+  "injected_defects": [
+    {
+      "defect": "duplicate_orders",
+      "rows": 2722,
+      "rate": 0.004,
+      "detail": "exact duplicate order rows; line items not duplicated"
+    },
+    {
+      "defect": "refunds",
+      "rows": 3416,
+      "rate": 0.005,
+      "detail": "negative subtotal/tax/total, no line items, id prefixed 'rf-'"
+    },
+    {
+      "defect": "unit_slip",
+      "rows": 4194,
+      "store": "San Francisco",
+      "month": "2023-03",
+      "detail": "order header values multiplied by 100; line items untouched"
+    },
+    {
+      "defect": "missing_weather",
+      "rows": 275,
+      "share_of_rows": 0.0418,
+      "share_missing_among_extreme_days": 0.1613,
+      "share_missing_among_normal_days": 0.0231,
+      "detail": "MAR: missingness depends on the value itself, so mean imputation biases"
+    },
+    {
+      "defect": "late_arrivals",
+      "rows": 20468,
+      "rate": 0.03,
+      "max_lag_days": 4,
+      "detail": "loaded_at lags ordered_at by 1 day normally, more for late rows"
+    }
+  ]
+}

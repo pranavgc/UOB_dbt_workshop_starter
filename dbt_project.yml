@@ -1,19 +1,36 @@
-name: university_workshop
-
-profile: university_workshop
+name: jaffle_demand_lab
+version: "1.0.0"
+profile: jaffle_demand_lab
 
 seed-paths: ["seeds"]
 model-paths: ["models"]
 macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+
 clean-targets:
   - "target"
   - "dbt_packages"
 
+# Reference catalogue only: products, stores and the bill of materials.
+# The transactional feed comes from sim/ and is read as a source, not a seed.
 seeds:
-  # Builds seeds into '<your_dataset_name>_raw'
-  university_workshop:
-    +dataset: raw
+  jaffle_demand_lab:
+    +schema: raw
+    reference:
+      raw_products:
+        +column_types:
+          price: bigint
+      raw_supplies:
+        +column_types:
+          cost: bigint
 
 models:
-  university_workshop:
+  jaffle_demand_lab:
     +static_analysis: strict
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

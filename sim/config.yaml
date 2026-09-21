@@ -1,0 +1,252 @@
+# =============================================================================
+# Data-generating process for the Jaffle Demand Lab.
+#
+# Every parameter here is a decision, and every coefficient listed under
+# `coefficients` is written verbatim to sim/ground_truth.json so that models can
+# be scored on whether they RECOVER it -- not only on how well they fit.
+#
+# Structural form (store s, day d, sku k):
+#
+#   log lambda[s,d,k] = alpha[s]
+#                     + beta[type(k)] * log(price[s,d,k] / base_price[k])
+#                     + gamma * featured[s,d,k]
+#                     + curvature * ((temp[s,d] - temp_opt) / 10)^2
+#                     + bev_temp * ((temp[s,d] - temp_opt) / 10) * is_beverage(k)
+#                     + dow[weekday(d)]
+#                     + sum_j ( a_j*sin(2*pi*j*doy/365) + b_j*cos(2*pi*j*doy/365) )
+#                     + ramp * min(days_since_open / ramp_days, 1)
+#
+#   units[s,d,k] ~ NegativeBinomial(mean = lambda, dispersion = nb_dispersion)
+#
+# Three deliberate difficulties are built in. They are the point of the project.
+#
+#   1. beta differs by product type, so a pooled price coefficient is
+#      misspecified by construction.
+#   2. `featured` is NOT randomly assigned -- see `promotions` below. It is
+#      switched on when trailing sales are weak, which makes it correlated with
+#      the error term. Naive OLS will understate gamma.
+#   3. The temperature response is quadratic (U-shaped), so any purely linear
+#      term underfits for a knowable reason.
+# =============================================================================
+
+seed: 20260914
+
+window:
+  # Three years of daily history.
+  start_date: "2023-01-01"
+  end_date: "2025-12-31"
+
+stores:
+  # The store catalogue (name, tax_rate) is real -- it comes from
+  # seeds/reference/raw_stores.csv. Opening dates are overridden here.
+  #
+  # The catalogue's real opening dates are all 2016-2019, which would put every
+  # store in a mature state for the whole simulation window and leave the
+  # ramp-up coefficient unidentifiable. Two stores are therefore given openings
+  # INSIDE the window so `ramp` can actually be estimated and checked.
+  ramp_days: 90
+  opened_at:
+    Philadelphia:    "2021-04-12"   # mature before window start
+    Brooklyn:        "2021-11-03"   # mature
+    "San Francisco": "2022-06-20"   # mature
+    "New Orleans":   "2023-02-14"   # opens mid-window  -> ramp identifiable
+    Chicago:         "2024-06-15"   # opens mid-window  -> ramp identifiable
+    "Los Angeles":   "2025-02-03"   # opens mid-window  -> ramp identifiable
+
+weather:
+  # Daily mean temperature per city: an annual sinusoid plus an AR(1) anomaly.
+  # Values are degrees Celsius and are roughly plausible for each city, which
+  # matters only because a reviewer will sanity-check them.
+  ar1_rho: 0.72
+  ar1_sigma: 2.6
+  cities:
+    Philadelphia:    {annual_mean: 13.0, annual_amplitude: 11.5, peak_doy: 200}
+    Brooklyn:        {annual_mean: 13.4, annual_amplitude: 11.0, peak_doy: 202}
+    Chicago:         {annual_mean: 10.5, annual_amplitude: 13.0, peak_doy: 198}
+    "San Francisco": {annual_mean: 14.5, annual_amplitude:  3.5, peak_doy: 250}
+    "New Orleans":   {annual_mean: 21.0, annual_amplitude:  8.0, peak_doy: 205}
+    "Los Angeles":   {annual_mean: 18.5, annual_amplitude:  5.0, peak_doy: 225}
+
+pricing:
+  # Prices vary three ways so that the elasticity is identifiable:
+  #   - a slow chain-wide inflation drift,
+  #   - a per-store regional multiplier that itself drifts,
+  #   - discrete per-sku repricing events every few months.
+  # Prices are held in cents, like the source system.
+  monthly_inflation: 0.0022          # ~2.7% a year
+  store_multiplier:                  # regional price level at window start
+    Philadelphia:    1.00
+    Brooklyn:        1.08
+    Chicago:         1.02
+    "San Francisco": 1.14
+    "New Orleans":   0.96
+    "Los Angeles":   1.10
+  store_multiplier_drift_sd: 0.00035 # random walk step, per day
+  reprice:
+    # Menu reprices roughly quarterly. This matters more than it looks: the
+    # elasticity is identified only from price movement WITHIN a store and sku
+    # over time, because the store and sku fixed effects absorb everything else.
+    # At the first draft's ~5.5-month interval the within-sku price sd was 3.5%,
+    # which was too little signal against a 0.21 log-point demand shock and left
+    # the elasticity estimates so noisy that one landed 40% off by chance.
+    mean_interval_days: 75
+    jump_sd: 0.050                   # log-scale size of a repricing event
+    max_cumulative_log_dev: 0.35     # keeps prices inside a believable band
+
+promotions:
+  # ---------------------------------------------------------------------------
+  # THE CONFOUNDER. Read this before touching the modelling code.
+  #
+  # A "featured" promotion is a menu-board / display placement. It does NOT
+  # change the price -- that is deliberate, so that the featuring effect (gamma)
+  # and the price effect (beta) are separately identifiable rather than being
+  # the same intervention wearing two hats.
+  #
+  # Featuring is decided weekly, per store and product type, by a rule that
+  # looks at recent performance: if the trailing 7-day average is weak relative
+  # to the trailing 28-day average, the store is much more likely to feature
+  # something. Featuring is therefore assigned BECAUSE demand was low, so it is
+  # correlated with the error term and naive OLS understates its true lift.
+  #
+  # Controlling for trailing demand (which mart_ml_features supplies as a
+  # correctly lagged feature) recovers it.
+  # ---------------------------------------------------------------------------
+  weak_ratio_threshold: 0.94   # trailing_7d / trailing_28d below this = "weak"
+  prob_if_weak: 0.55           # chance of featuring in a weak week
+  prob_if_normal: 0.07         # chance of featuring in a normal week
+  skus_per_campaign: 3
+  campaign_days: 7
+  warmup_days: 28              # no featuring until trailing stats exist
+
+arrivals:
+  # Intra-day arrival times, CALIBRATED against the real orders: the shop's peak
+  # is 7-9am (about half of all orders), not lunch, with a secondary bump around
+  # 1pm and a thin afternoon tail. The first draft assumed a lunch peak, which the
+  # real data flatly contradicts.
+  components:
+    - {weight: 0.52, mean_hour:  8.1, sd_hours: 1.1}
+    - {weight: 0.30, mean_hour: 13.0, sd_hours: 1.4}
+    - {weight: 0.18, mean_hour: 16.5, sd_hours: 1.8}
+  open_hour: 7.0
+  close_hour: 20.0
+
+baskets:
+  # Calibrated against the 686 real orders in calibration/real_seeds/:
+  # observed mean basket = 1.45 items, max 10.
+  # A zero-truncated geometric with p = 1/1.45 reproduces that shape.
+  mean_items_per_order: 1.45
+  max_items_per_order: 12
+
+tax:
+  # Tax is not a static attribute of a store, even though the seeded catalogue
+  # models it as one. Chicago's rate changes partway through the window, and the
+  # pipeline has to use the rate in effect on the day rather than the current
+  # one. assert_tax_matches_rate_in_effect.sql holds it to that.
+  changes:
+    - store: Chicago
+      effective_date: "2025-03-01"
+      new_rate: 0.0725
+
+defects:
+  # ---------------------------------------------------------------------------
+  # Deliberate data-quality defects. Implemented in sim/defects.py, which
+  # documents what each one is and which test catches it.
+  #
+  # Set enabled: false to generate a clean feed -- useful for confirming that a
+  # pipeline failure is really the defect and not something else.
+  # ---------------------------------------------------------------------------
+  enabled: true
+
+  duplicate_order_rate: 0.004      # double-submit bug; line items NOT duplicated
+  refund_rate: 0.005               # negative totals, no line items
+
+  unit_slip:                       # one store-month with cents applied twice (100x too large)
+    store: "San Francisco"
+    month: "2023-03"          # early in the window so short CI runs exercise it too
+
+  weather_missing:                 # MAR, not MCAR -- see defects.py
+    base_rate: 0.02
+    extreme_rate: 0.16
+    extreme_abs_z: 1.5
+
+  late_arrival:
+    rate: 0.03
+    max_lag_days: 4
+
+customers:
+  n_customers: 4200
+  repeat_concentration: 1.35   # Dirichlet-ish skew; higher = more concentrated
+
+coefficients:
+  # ---- THE ANSWERS. Copied verbatim into sim/ground_truth.json. ----
+  alpha_store:                 # log baseline demand per sku-day
+    Philadelphia:    2.55
+    Brooklyn:        2.42
+    Chicago:         2.28
+    "San Francisco": 2.66
+    "New Orleans":   2.18
+    "Los Angeles":   2.50
+  beta_price:                  # price elasticity, by product type
+    jaffle:   -1.80
+    beverage: -0.90
+  gamma_featured: 0.35         # log lift from a featured placement (~+42%)
+
+  # Per-sku baseline popularity, as log offsets centred on zero. CALIBRATED, not
+  # invented: fitted from the sku mix of the 686 real orders in
+  # calibration/real_seeds/, where beverages outsell jaffles roughly four to one.
+  # Without this the simulator produced a ~50/50 mix, which is not what the real
+  # shop looks like. Centred so the overall demand level is unchanged.
+  sku_popularity:
+    BEV-001: +0.6735
+    BEV-002: +0.6991
+    BEV-003: +0.7117
+    BEV-004: +0.7605
+    BEV-005: +0.7425
+    JAF-001: -0.7526
+    JAF-002: -0.7526
+    JAF-003: -0.6023
+    JAF-004: -0.6999
+    JAF-005: -0.7800
+  temp_opt_c: 20.0
+  temp_curvature: -0.16        # per (10 degC)^2 away from optimum -- the U shape
+  beverage_temp: 0.20          # extra beverage demand per 10 degC above optimum
+  dow:                         # Monday..Sunday, centred on zero
+    - -0.11
+    - -0.09
+    - -0.03
+    -  0.06
+    -  0.29
+    -  0.36
+    - -0.48
+  fourier:                     # annual seasonality, K = 2 harmonics
+    a1:  0.14
+    b1: -0.09
+    a2:  0.05
+    b2:  0.03
+  ramp: 0.45                   # lift from 0 to full over ramp_days
+  nb_dispersion: 6.0           # NegBin size parameter; var = mu + mu^2/size
+
+  # ---------------------------------------------------------------------------
+  # The unobserved confounder, and the reason the featuring coefficient is biased.
+  #
+  # A persistent latent demand shock per store and product type, AR(1) in daily
+  # steps. It is never emitted to the warehouse -- no model can condition on it
+  # directly. It matters because the featuring rule reads TRAILING realised
+  # demand, which reflects this shock; and because the shock persists, a weak
+  # last week implies a weak this week. Featuring is therefore correlated with
+  # the CURRENT error term, which is what endogeneity actually is.
+  #
+  # Without persistence there would be no bias at all: mean-reverting noise makes
+  # a bad week tell you nothing about today, and naive OLS would be fine. That is
+  # the subtlety worth understanding, so it is built in explicitly.
+  #
+  # Stationary sd = sigma / sqrt(1 - rho^2) = 0.07 / sqrt(0.19) ~ 0.16 log points.
+  # ---------------------------------------------------------------------------
+  latent_shock_rho: 0.90
+  latent_shock_sigma: 0.07
+
+output:
+  raw_dir: "data/raw"
+  duckdb_path: "data/jaffle.duckdb"
+  raw_schema: "sim_raw"
+  ground_truth_path: "sim/ground_truth.json"

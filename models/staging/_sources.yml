@@ -1,126 +1,151 @@
+version: 2
+
 sources:
-  - name: jaffle_shop
-    database: ivory-forklift-502008-i7 
-    schema: uob_dbt_output_raw   
-    tables:      
-      - name: raw_customers
-        description: ""
-        columns:
-          - name: id
-            data_type: string
-            description: ""
-          - name: name
-            data_type: string
-            description: ""
+  - name: jaffle_sim
+    description: >
+      The generated point-of-sale feed. Written by `python -m sim.generate`, which
+      produces parquet under data/raw/ and loads it into the DuckDB file that the
+      `dev` target points at. On BigQuery, point `raw_database` / `raw_schema` at
+      wherever sim/load_bigquery.py put the tables.
 
-      - name: raw_items
-        description: ""
-        columns:
-          - name: id
-            data_type: string
-            description: ""
-            tests:
-              - unique
-              - not_null
-          - name: order_id
-            data_type: string
-            description: ""
-            
-          - name: sku
-            data_type: string
-            description: ""
+      Nothing here reveals the data-generating process: the latent demand rate is
+      never emitted. Only observable transactions, prices, weather and placements.
+    database: "{{ var('raw_database', target.database) }}"
+    schema: "{{ var('raw_schema', 'sim_raw') }}"
 
+    tables:
       - name: raw_orders
-        description: ""
+        description: >
+          One row per order, plus the defects a real till system produces: a small
+          share of exact duplicate rows from a double-submit bug, refunds carried
+          as negative totals with no line items, and one store-month whose header
+          values were written in dollars rather than cents. All three are repaired
+          in int_orders_repaired, each with a test guarding the repair.
         columns:
           - name: id
-            data_type: string
-            description: ""
+            description: >
+              Order key at source, and NOT unique -- see the model description.
+              The uniqueness test is kept at warn severity so the duplicate rate
+              stays visible; the error-severity test lives on int_orders_repaired,
+              where the key is genuinely unique.
             tests:
-              - unique
+              - unique:
+                  config:
+                    severity: warn
               - not_null
           - name: customer
-            data_type: string
-            description: ""
-          - name: ordered_at
-            data_type: datetime
-            description: ""
+            description: "FK to raw_customers.id."
+            tests: [not_null]
           - name: store_id
-            data_type: string
-            description: ""
+            description: "FK to the store catalogue."
+            tests: [not_null]
+          - name: ordered_at
+            description: "Order timestamp, local store time."
+            tests: [not_null]
+          - name: loaded_at
+            description: >
+              When the row landed in the warehouse. Normally the day after the
+              order; sometimes later. Emitted so that late arrival is visible
+              rather than assumed away.
+            tests: [not_null]
           - name: subtotal
-            data_type: int64
-            description: ""
+            description: "Pre-tax order value, in cents. Equals the sum of its line prices."
           - name: tax_paid
-            data_type: int64
-            description: ""
+            description: "Tax in cents, at the store's catalogue rate."
           - name: order_total
-            data_type: int64
-            description: ""
+            description: "subtotal + tax_paid, in cents."
 
-      - name: raw_products
-        description: ""
-        columns:
-          - name: sku
-            data_type: string
-            description: ""
-            tests:
-              - unique
-              - not_null
-          - name: name
-            data_type: string
-            description: ""
-          - name: type
-            data_type: string
-            description: ""
-          - name: price
-            data_type: int64
-            description: ""
-          - name: description
-            data_type: string
-            description: ""
-
-      - name: raw_stores
-        description: ""
+      - name: raw_items
+        description: "One row per unit sold. No quantity column: each row is one unit."
         columns:
           - name: id
-            data_type: string
-            description: ""
-            tests:
-              - unique
-              - not_null
-          - name: name
-            data_type: string
-            description: ""
+            tests: [unique, not_null]
+          - name: order_id
+            description: "FK to raw_orders.id."
+            tests: [not_null]
+          - name: sku
+            description: "FK to the product catalogue."
+            tests: [not_null]
+
+      - name: raw_customers
+        columns:
+          - name: id
+            tests: [unique, not_null]
+
+      - name: raw_store_openings
+        description: >
+          Store opening dates as source metadata. The seeded store catalogue carries
+          the original 2016-2019 opening dates, which sit outside the simulation
+          window; sim/config.yaml overrides them so that the ramp-up effect is
+          identifiable. dim_store joins this rather than trusting the seed.
+        columns:
+          - name: store_id
+            tests: [unique, not_null]
           - name: opened_at
-            data_type: datetime
-            description: ""
-          - name: tax_rate
-            data_type: float64
-            description: ""
+            tests: [not_null]
 
-      - name: raw_supplies
-        description: ""
+      - name: raw_weather
+        description: >
+          Daily mean temperature per store location, with gaps. The missingness is
+          not random: the station drops out far more often on hot and cold
+          extremes, so mean-imputing biases the temperature coefficient toward
+          zero. int_weather_imputed fills from store climatology and flags every
+          filled row.
         columns:
-          - name: id
-            data_type: string
-            description: ""
-            tests:
-              - unique
-              - not_null
-          - name: name
-            data_type: string
-            description: ""
-            
-          - name: cost
-            data_type: int64
-            description: ""
-            
-          - name: perishable
-            data_type: boolean
-            description: ""
-            
+          - name: store_id
+            tests: [not_null]
+          - name: weather_date
+            tests: [not_null]
+          - name: temperature_c
+            description: "Null where the reading is missing. Deliberate -- see above."
+
+      - name: raw_tax_rate_changes
+        description: >
+          Tax rate history per store. The seeded catalogue models tax_rate as a
+          static store attribute; it is not. One store changes rate partway through
+          the window, and assert_tax_matches_rate_in_effect.sql holds the pipeline
+          to using the rate in force on the day.
+        columns:
+          - name: store_id
+            tests: [not_null]
+          - name: effective_date
+            tests: [not_null]
+          - name: tax_rate
+            tests: [not_null]
+
+      - name: raw_price_snapshots
+        description: >
+          Daily list price per store and sku, in cents. The feed emits a snapshot
+          per day rather than change events, so the price join downstream is an
+          equality join rather than an as-of join. This table also defines the
+          universe of store x sku x day combinations, and is used as the demand
+          spine so that zero-sales days are present rather than silently missing.
+        columns:
+          - name: store_id
+            tests: [not_null]
           - name: sku
-            data_type: string
-            description: ""
-            
+            tests: [not_null]
+          - name: price_date
+            tests: [not_null]
+          - name: price
+            tests: [not_null]
+
+      - name: raw_featured_placements
+        description: >
+          One row per store x sku x day on which the product held a featured
+          menu-board placement. Featuring does NOT change the price -- it is a
+          display intervention with its own lift, which is what keeps it separable
+          from the price elasticity.
+
+          Important for modelling: placements are not randomly assigned. They are
+          scheduled when trailing sales are weak, so is_featured is correlated with
+          the error term. See sim/ground_truth.json -> identification_notes.
+        columns:
+          - name: store_id
+            tests: [not_null]
+          - name: sku
+            tests: [not_null]
+          - name: placement_date
+            tests: [not_null]
+          - name: campaign_id
+            tests: [not_null]
